@@ -1,0 +1,62 @@
+[package]
+name = "bevy_headless_test"
+version = "0.1.0"
+edition = "2021"
+# Bevy 0.19's own minimum.
+rust-version = "1.95"
+description = "A test kit for Bevy apps: a strict headless App (ambiguity detection with an allow-list, deterministic time, frame stepping), message and state assertions, UI text read-back, and replicon protocol / loopback helpers."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/warmar94/bevy_headless_test"
+readme = "README.md"
+keywords = ["bevy", "testing", "headless", "ecs", "replicon"]
+categories = ["game-development", "development-tools::testing"]
+# Not part of the published package.
+exclude = ["NOTES.md", "docs/", "/target"]
+
+[features]
+default = ["ui"]
+# UI text read-back (`Text`, `TextSpan`, `Text2d`).
+ui = ["dep:bevy_ui", "dep:bevy_text", "dep:bevy_sprite"]
+# A replicon test app, protocol-hash comparison.
+replicon = ["dep:bevy_replicon"]
+# A host and a client in one process over real UDP loopback (bevy_net_session's `ip` transport).
+net_session = ["replicon", "dep:bevy_net_session"]
+
+# Bevy is pinned EXACTLY and only its sub-crates are used, without default features: the kit adds
+# no Bevy feature a game did not ask for, and a game on Bevy 0.19.0 ends up with ONE Bevy.
+[dependencies]
+bevy_app = { version = "=0.19.0", default-features = false, features = ["std"] }
+# `debug` keeps real system and component names, which every failure message prints.
+bevy_ecs = { version = "=0.19.0", default-features = false, features = ["std", "debug"] }
+bevy_state = { version = "=0.19.0", default-features = false, features = ["std", "bevy_app"] }
+bevy_time = { version = "=0.19.0", default-features = false, features = ["std"] }
+# `FrameCountPlugin`, part of Bevy's `MinimalPlugins`.
+bevy_diagnostic = { version = "=0.19.0", default-features = false, features = ["std"] }
+bevy_ui = { version = "=0.19.0", default-features = false, optional = true }
+bevy_text = { version = "=0.19.0", default-features = false, optional = true }
+bevy_sprite = { version = "=0.19.0", default-features = false, features = ["bevy_text"], optional = true }
+bevy_replicon = { version = "=0.44.2", default-features = false, features = ["client", "server"], optional = true }
+bevy_net_session = { version = "0.1.0", optional = true }
+
+[dev-dependencies]
+# Tests + examples: the prelude, headless.
+bevy = { version = "=0.19.0", default-features = false, features = ["std", "bevy_state"] }
+serde = { version = "1", features = ["derive"] }
+
+[[example]]
+name = "quick_start"
+
+[[test]]
+name = "text"
+required-features = ["ui"]
+
+[[test]]
+name = "replicon"
+required-features = ["replicon"]
+
+[[test]]
+name = "loopback"
+required-features = ["net_session"]
+
+[package.metadata.docs.rs]
+all-features = true

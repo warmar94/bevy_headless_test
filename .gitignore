@@ -1,0 +1,30 @@
+# Build output
+/target
+**/*.rs.bk
+*.pdb
+
+# Editors / OS
+.vs/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Secrets — never in the repo
+.env
+.env.*
+*.pem
+*.key
+credentials.toml
+.cargo/credentials*
+
+# Scratch
+/shots
+/tmp
+
+# Private notes — local only
+NOTES.md
+
+# Private design docs — local only
+/docs/
