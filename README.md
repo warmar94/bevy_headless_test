@@ -85,11 +85,11 @@ assert_eq!(app.world().resource::<Score>().0, 6);
 
 ## Quick start
 
-Add it as a dev-dependency. From crates.io (once published):
+Add it as a dev-dependency. From crates.io:
 
 ```toml
 [dev-dependencies]
-bevy_headless_test = "0.2"
+bevy_headless_test = "0.2.0"
 ```
 
 or from the repository, pinned to a release tag:

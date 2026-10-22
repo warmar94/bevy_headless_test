@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (before 1.0, a breaking
 change or a Bevy / bevy_replicon bump raises the minor version).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-10-22
 
 Bevy 0.20 release; the `net_session` feature moved to its own crate.
 
@@ -19,10 +19,9 @@ Bevy 0.20 release; the `net_session` feature moved to its own crate.
 
 - **Feature `net_session` and the `loopback` module.** The UDP loopback helpers moved, unchanged,
   to their own crate, `bevy_net_session_test` (`bevy_headless_test::loopback::X` is now
-  `bevy_net_session_test::X`). The test kit no longer depends on any networking crate, so its
-  releases no longer wait on bevy_net_session's.
+  `bevy_net_session_test::X`). The test kit depends on no networking crate.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-09-28
 
 First release, for Bevy 0.19.0 and, optionally, bevy_replicon 0.44.2 and bevy_net_session 0.1.
 
