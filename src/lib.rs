@@ -14,9 +14,7 @@
 //! - state helpers: [`TestApp::set_state`], [`TestApp::state`], [`TestApp::assert_state`];
 //! - UI text read-back (feature `ui`): [`UiText`], [`TestApp::ui_text`];
 //! - replicon (feature `replicon`): [`replicon::replicon_app`], [`replicon::protocol_hash`],
-//!   [`replicon::assert_same_protocol`];
-//! - UDP loopback (feature `net_session`): [`loopback::host`], [`loopback::join`],
-//!   [`loopback::connect`].
+//!   [`replicon::assert_same_protocol`].
 //!
 //! It is a test crate: the `assert_*` / `check_*` / `step*` functions panic with a message that
 //! says what went wrong and where. Everything else returns `Option` / `Result` and never panics.
@@ -29,13 +27,11 @@ mod state;
 #[cfg(feature = "ui")]
 pub mod text;
 
-#[cfg(feature = "net_session")]
-pub mod loopback;
 #[cfg(feature = "replicon")]
 pub mod replicon;
 
 /// Every Rust example in the README compiles (checked by `cargo test --all-features`).
-#[cfg(all(doctest, feature = "ui", feature = "replicon", feature = "net_session"))]
+#[cfg(all(doctest, feature = "ui", feature = "replicon"))]
 #[doc = include_str!("../README.md")]
 struct ReadmeDoctests;
 

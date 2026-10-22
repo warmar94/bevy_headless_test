@@ -2,13 +2,12 @@
 
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![CI](https://github.com/warmar94/bevy_headless_test/actions/workflows/ci.yml/badge.svg)](https://github.com/warmar94/bevy_headless_test/actions/workflows/ci.yml)
-[![Bevy 0.19.0](https://img.shields.io/badge/Bevy-0.19.0-informational)](https://bevyengine.org)
-[![bevy_replicon 0.44.2 (optional)](https://img.shields.io/badge/bevy__replicon-0.44.2%20(optional)-orange)](https://crates.io/crates/bevy_replicon)
+[![Bevy 0.20.0](https://img.shields.io/badge/Bevy-0.20.0-informational)](https://bevyengine.org)
+[![bevy_replicon 0.45.2 (optional)](https://img.shields.io/badge/bevy__replicon-0.45.2%20(optional)-orange)](https://crates.io/crates/bevy_replicon)
 
 A **test kit for [Bevy](https://bevyengine.org) apps**: a strict, headless, deterministic `App`
 for your system tests, plus the helpers every Bevy project ends up rewriting: message and state
-assertions, UI text read-back, and (optionally) replicon protocol checks and a real UDP loopback
-between a host and a client in one process.
+assertions, UI text read-back, and (optionally) replicon protocol checks.
 
 It is a **dev-dependency**: nothing of it ships in your game.
 
@@ -47,7 +46,7 @@ assert_eq!(app.world().resource::<Score>().0, 6);
   - [5. States](#5-states)
   - [6. UI text](#6-ui-text)
   - [7. Replicon apps and protocol hashes](#7-replicon-apps-and-protocol-hashes)
-  - [8. Host and client over UDP loopback](#8-host-and-client-over-udp-loopback)
+  - [8. Multiplayer tests over UDP loopback](#8-multiplayer-tests-over-udp-loopback)
   - [9. Several apps at once](#9-several-apps-at-once)
 - [How it works](#how-it-works)
 - [API reference](#api-reference)
@@ -81,8 +80,6 @@ assert_eq!(app.world().resource::<Score>().0, 6);
 - **Replicon** (optional): a test app that is finished right after your registrations, so client
   events drain locally; `protocol_hash` and `assert_same_protocol` for "client and server
   register the same things in the same order".
-- **Real UDP loopback** (optional, through `bevy_net_session`): a host and a client in one
-  process, stepped in lock-step until the client is joined.
 - **Clear failures, no other panics**: an assertion panics with what went wrong and where; every
   query-style function returns `Option` / a value instead.
 
@@ -92,14 +89,14 @@ Add it as a dev-dependency. From crates.io (once published):
 
 ```toml
 [dev-dependencies]
-bevy_headless_test = "0.1"
+bevy_headless_test = "0.2"
 ```
 
 or from the repository, pinned to a release tag:
 
 ```toml
 [dev-dependencies]
-bevy_headless_test = { git = "https://github.com/warmar94/bevy_headless_test", tag = "v0.1.0" }
+bevy_headless_test = { git = "https://github.com/warmar94/bevy_headless_test", tag = "v0.2.0" }
 ```
 
 A typical system test:
@@ -450,47 +447,12 @@ Replicon's own in-memory connection, `bevy_replicon::test_app::ServerTestAppExt`
 (`connect_client`, `exchange_with_client`), works on a `TestApp` too (it dereferences to `App`);
 call `finish()` on both apps first.
 
-### 8. Host and client over UDP loopback
+### 8. Multiplayer tests over UDP loopback
 
-Feature `net_session` (includes `replicon`), through
-[`bevy_net_session`](https://crates.io/crates/bevy_net_session)'s UDP transport:
-
-- `loopback::net_builder(NetSessionPlugin { .. })`: a builder for one peer (replicon +
-  the session plugin + a 1 ms real pause per frame; replicon's renet backend's own pairs
-  allowed, `NET_THIRD_PARTY`).
-- `loopback::host(&mut host, max_clients) -> SocketAddr`: host on a free port.
-- `loopback::join(&mut host, &mut client, addr, payload, max_frames) -> u32`: join and step
-  both until the client is joined and the host has its peer; fails with the `JoinFailed` reason.
-- `loopback::connect(&mut host, &mut client) -> SocketAddr`: both, empty payload.
-
-```rust,no_run
-use bevy::prelude::*;
-use bevy_headless_test::loopback::{self, bevy_net_session::NetSessionPlugin, net_builder};
-use bevy_headless_test::prelude::*;
-use bevy_headless_test::replicon::bevy_replicon::prelude::*;
-use serde::{Deserialize, Serialize};
-
-#[derive(Event, Serialize, Deserialize, Clone)]
-struct Ping;
-
-let peer = || {
-    net_builder(NetSessionPlugin { protocol_version: 1, ..Default::default() })
-        .setup(|app| {
-            app.add_client_event::<Ping>(Channel::Ordered);
-        })
-        .build()
-};
-let (mut host, mut client) = (peer(), peer());
-loopback::connect(&mut host, &mut client);
-
-client.world_mut().commands().client_trigger(Ping);
-TestApp::step_together(&mut [&mut host, &mut client]);
-```
-
-It uses real sockets on 127.0.0.1 only; a join takes a handful of frames. Without the feature,
-the same works by hand: host with `HostSession::ip(0, n)`, read the port from
-`NetSession::local_addr()`, join `127.0.0.1:port`, and step both apps with a 1 ms sleep per
-frame until `NetSession::is_joined()`.
+A host and a client in one process over real UDP, through `bevy_net_session`, live in their own
+crate: [`bevy_net_session_test`](https://crates.io/crates/bevy_net_session_test), built on this
+kit. (Up to 0.1 they were this crate's `loopback` module, feature `net_session`.) This kit itself
+knows nothing about any networking crate.
 
 ### 9. Several apps at once
 
@@ -568,17 +530,9 @@ repeats it until the condition holds.
 `protocol_hash(&App) -> Option<ProtocolHash>`, `assert_same_protocol(&App, &App)`,
 `REPLICON_THIRD_PARTY`, re-export `bevy_replicon`.
 
-### `loopback` (feature `net_session`)
-
-`net_builder(NetSessionPlugin) -> TestAppBuilder`, `host(&mut TestApp, max_clients) ->
-SocketAddr`, `join(&mut host, &mut client, addr, payload, max_frames) -> u32`,
-`connect(&mut host, &mut client) -> SocketAddr`, `LOOPBACK_PAUSE`, `DEFAULT_JOIN_FRAMES`,
-`NET_THIRD_PARTY`, re-export `bevy_net_session`.
-
 ### What panics
 
-The `assert_*`, `check_*`, `step*`, `run*_until*`, `send*`, `set_state*` functions and the
-loopback helpers panic with a message on failure: that is how a test fails. Everything else
+The `assert_*`, `check_*`, `step*`, `run*_until*`, `send*`, `set_state*` functions panic with a message on failure: that is how a test fails. Everything else
 (`state`, `messages*` for a watched type, `ambiguities` on a buildable app, `ui_text*`,
 `protocol_hash`, the builder) returns a value.
 
@@ -587,8 +541,7 @@ loopback helpers panic with a message on failure: that is how a test fails. Ever
 | feature | default | adds |
 |---|---|---|
 | `ui` | yes | UI text read-back (`bevy_ui`, `bevy_text`, `bevy_sprite`; no renderer) |
-| `replicon` | no | the `replicon` module (`bevy_replicon` 0.44.2, client + server) |
-| `net_session` | no | the `loopback` module (`bevy_net_session` 0.1, UDP); implies `replicon` |
+| `replicon` | no | the `replicon` module (`bevy_replicon` 0.45.2, client + server) |
 
 Without default features the kit depends on `bevy_app`, `bevy_ecs`, `bevy_state`, `bevy_time`
 and `bevy_diagnostic` only.
@@ -597,10 +550,11 @@ and `bevy_diagnostic` only.
 
 | bevy_headless_test | Bevy | bevy_replicon (optional) | bevy_net_session (optional) |
 |---|---|---|---|
+| 0.2 | 0.20.0 | 0.45.2 | - (moved to `bevy_net_session_test`) |
 | 0.1 | 0.19.0 | 0.44.2 | 0.1 |
 
-Every Bevy crate is required as `=0.19.0` without default features, so your project keeps ONE
-Bevy. The minimum Rust version is 1.95 (Bevy 0.19's).
+Every Bevy crate is required as `=0.20.0` without default features, so your project keeps ONE
+Bevy. The minimum Rust version is 1.97.1 (Bevy 0.20's).
 
 ## Examples
 
@@ -624,8 +578,8 @@ two libraries race each other. If the pair is between your system and a library'
 **Can I use `DefaultPlugins`?** Not in this app (it already has the minimal set, and a window or
 renderer is not headless). Add the individual plugins your code needs.
 
-**Is time real anywhere?** Only `real_pause`, and only where you ask for it (the loopback
-builder). Everything else is simulated.
+**Is time real anywhere?** Only `real_pause`, and only where you ask for it (bevy_net_session_test's
+loopback builder sets one). Everything else is simulated.
 
 **`Startup` is not checked by default.** It runs once; add it with `.strict(Startup)`.
 
